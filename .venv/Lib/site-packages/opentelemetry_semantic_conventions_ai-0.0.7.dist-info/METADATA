@@ -1,0 +1,19 @@
+Metadata-Version: 2.1
+Name: opentelemetry-semantic-conventions-ai
+Version: 0.0.7
+Summary: OpenTelemetry Semantic Conventions Extension for Large Language Models
+License: Apache-2.0
+Author: Gal Kleinman
+Author-email: gal@traceloop.com
+Requires-Python: >=3.8.1,<4
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Description-Content-Type: text/markdown
+
+# opentelemetry-semantic-conventions-llm
+
+Project description here.
+
