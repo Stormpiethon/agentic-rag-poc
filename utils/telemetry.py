@@ -5,26 +5,10 @@ reasoning, the data it accessed, and the actions it took.
 """
 
 import os
-from opentelemetry import trace
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
-from opentelemetry.instrumentation.langchain import LangchainInstrumentor
 
-
+# Check if the LangSmith environment variables are set for automatic tracing
 def init_telemetry():
-    """Initializes OpenTelemetry tracing for the LangChain/LangGraph application."""
-    # Setup the basic Tracer Provider
-    provider = TracerProvider()
-    
-    # Configure the processor to print traces cleanly to your terminal console
-    # In a production app, this would send data to Datadog, AWS X-Ray, or Honeycomb.
-    processor = BatchSpanProcessor(ConsoleSpanExporter())
-    provider.add_span_processor(processor)
-    
-    # Set the global tracer provider
-    trace.set_tracer_provider(provider)
-    
-    # This automatically hooks into all chains, agents, and tool calls.
-    LangchainInstrumentor().instrument()
-    
-    print("Telemetry and tracing hooks successfully initialized.")
+    if os.getenv("LANGCHAIN_TRACING_V2") == "true" and os.getenv("LANGCHAIN_API_KEY"):
+        print("\n !!! LangSmith real-time observability connected automatically via environment hooks.")
+    else:
+        print("\n !!! Warning: LangSmith API keys missing. Running without real-time tracing.")
