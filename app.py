@@ -14,76 +14,30 @@ into the compiled graph engine
 import os
 from dotenv import load_dotenv
 from utils.telemetry import init_telemetry
-from ingestion.parsers import extract_structural_fingerprint, chunk_document_hybrid
-from ingestion.agent import determine_document_strategy
+from retrieval.retriever import query_vector_store
 
 def main():
-    # Initialize environments and keys
     load_dotenv()
     init_telemetry()
     
-    print("\n--- Agentic RAG Pipeline Verification ---")
-    print(f"OpenAI Guard:    {'ACTIVE' if os.getenv('OPENAI_API_KEY') else 'MISSING'}")
-    print(f"Pinecone Guard:  {'ACTIVE' if os.getenv('PINECONE_API_KEY') else 'MISSING'}")
-    print(f"LangSmith Guard: {'ACTIVE' if os.getenv('LANGCHAIN_API_KEY') else 'MISSING'}")
-    print("-------------------------------------------\n")
-
-    # Extract the physical layout structure
-    pdf_path = "data/Apple_10-Q.pdf"
-    print(f"Extracting structural canvas from: {pdf_path}...")
-    fingerprint = extract_structural_fingerprint(pdf_path)
+    print("\n--- Running Retrieval Engine Verification ---")
     
-    # Let the Ingestion Agent process the strategy call
-    print("Invoking Ingestion Agent for architectural review...")
-    strategy = determine_document_strategy(fingerprint)
-
-    # Get the document chunks based on the agent's recommended strategy
-    print("Slicing document using hybrid layout parser...")
-    processed_chunks = chunk_document_hybrid(
-        pdf_path = pdf_path,
-        chunk_size = strategy.chunk_size,
-        chunk_overlap = strategy.chunk_overlap
-    )
+    # Define a highly specific financial question about Apple's Q1 performance
+    question = "What were Apple's Products and Services net sales for the three months ended December 27, 2025?"
     
-    # Review the structured machine contract
-    print("\n================= INGESTION STRATEGY CONTRACT =================")
-    print(f"Document Classification: {strategy.document_type}")
-    print(f"Assigned Strategy Tier:  {strategy.chunking_strategy}")
-    print(f"Target Chunk Size:       {strategy.chunk_size} characters")
-    print(f"Target Overlap Bounds:   {strategy.chunk_overlap} characters")
-    print(f"\nArchitect Reasoning:   {strategy.reasoning}")
-    print("\n================================================================\n")
-
-# 4. Show a sample of the actual chunks ready for Pinecone
-    print(f"\nSuccessfully generated {len(processed_chunks)} hybrid chunks!")
+    # Execute our search
+    results = query_vector_store(query_text=question, top_k=2)
     
-    # Let's print a diagnostic summary of the chunk sizes
-    chunk_lengths = [c["metadata"]["chunk_length"] for c in processed_chunks]
-    avg_length = sum(chunk_lengths) / len(chunk_lengths)
-    print(f"--- Chunk Diagnostics ---")
-    print(f"Average Chunk Size: {avg_length:.1f} characters")
-    print(f"Max Chunk Size:     {max(chunk_lengths)} characters")
-    print(f"Min Chunk Size:     {min(chunk_lengths)} characters")
-    print(f"-------------------------\n")
+    # Display the matches
+    print(f"\nSuccessfully retrieved {len(results)} matches!")
     
-    # Look for a dense chunk to preview
-    dense_chunk = None
-    for idx, chunk in enumerate(processed_chunks):
-        if chunk["metadata"]["chunk_length"] > 800:
-            dense_chunk = chunk
-            dense_idx = idx
-            break
-
-    if dense_chunk:
-        print(f"================= DENSE VECTOR CHUNK PREVIEW (INDEX #{dense_idx}) =================")
-        print(f"Metadata Source:  {dense_chunk['metadata']['source']}")
-        print(f"Metadata Page:    {dense_chunk['metadata']['page']}")
-        print(f"Metadata Section: {dense_chunk['metadata']['section']}")
-        print(f"Character Count:  {dense_chunk['metadata']['chunk_length']}")
-        print(f"\nChunk Text Body:\n{dense_chunk['text']}")
-        print("====================================================================\n")
-    else:
-        print("No dense chunks found matching criteria.")
+    for idx, match in enumerate(results):
+        print(f"\n================= MATCH #{idx + 1} (Cosine Similarity: {match['score']:.4f}) =================")
+        print(f"Source:  {match['metadata']['source']} (Page {match['metadata']['page']})")
+        print(f"Section: {match['metadata']['section']}")
+        print(f"----------------------------------------------------------------------")
+        print(f"Text Content Snippet:\n{match['text'].strip()[:800]}") # Show up to 800 chars of the match
+        print("========================================================================\n")
 
 if __name__ == "__main__":
     main()
