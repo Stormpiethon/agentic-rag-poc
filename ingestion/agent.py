@@ -51,13 +51,18 @@ class DocumentStrategy(BaseModel):
     )
     # Chunk size related to structure and formatting, measure in tokens.
     chunk_size: int = Field(
-        description="Recommended maximum token count per chunk slice based on the document's " \
-        "structure and formatting (typically 200-500 tokens)."
+        default=1000,
+        description=(
+            "Recommended character count per chunk slice. "
+            "For HYBRID and SEMANTIC, this MUST be between 800 and 1500 to preserve sentence context. "
+            "For STRUCTURAL tables, it can be smaller (400-800)."
+        )
     )
     # Overlap strategy to prevent contextual clipping between boundaries, measure in tokens.
     chunk_overlap: int = Field(
-        description="Recommended token overlap to prevent contextual clipping between boundaries "
-        "(typically 10-20% of chunk_size)."
+        default=150,
+        description="Recommended character overlap to prevent context clipping. Typically 10% to " \
+        "15% of chunk_size (e.g., 100-200 characters)."
     )
     # Agent reasoning for the chosen strategy, providing a concise architectural justification.
     reasoning: str = Field(

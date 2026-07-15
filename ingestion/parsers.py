@@ -6,7 +6,9 @@ The extracted fingerprint is used to inform the agent's decision-making process 
 optimal chunking strategy for the document.
 """
 
+import re
 import fitz
+from typing import List, Dict, Any
 
 
 # Get the structural data about the doc to provide context to agent for chunking strategy.
@@ -51,3 +53,58 @@ def extract_structural_fingerprint(pdf_path: str) -> str:
         
     except Exception as e:
         return f"Extraction Error: Unable to parse document structure. Details: {str(e)}"
+    
+
+# Parses the PDF document by structural boundaries and semantic chunks within those boundaries
+def chunk_document_hybrid(pdf_path: str, chunk_size: int, chunk_overlap: int) -> List[Dict[str, Any]]:
+    doc = fitz.open(pdf_path)
+    chunks = []
+    
+    # Reconstruct the document as a list of page texts
+    # We keep track of the active section header (e.g., 'Item 1A') as we read
+    current_section = "Cover/Intro"
+    
+    # SEC Item pattern matches (e.g., "Item 1.", "Item 1A.", "PART I - Item 2")
+    item_pattern = re.compile(r'^\s*(PART\s+[I|II|III]+)?\s*(Item\s+\d+[A-Z]?)\.?\s*', re.IGNORECASE)
+
+    for page_num in range(len(doc)):
+        page = doc[page_num]
+        text = page.get_text("text")
+        
+        # Split page into lines to scan for structural section headers
+        lines = text.split('\n')
+        page_buffer = []
+        
+        for line in lines:
+            stripped = line.strip()
+            # If the line looks like an SEC Item heading, update our active metadata tracker
+            match = item_pattern.match(stripped)
+            # Avoid matching random paragraphs
+            if match and len(stripped) < 100:
+                current_section = match.group(0).strip()
+            page_buffer.append(line)
+            
+        full_page_text = "\n".join(page_buffer)
+        
+        # Slice the page text into our Target Chunk Size with Overlap
+        # We perform simple character sliding windows within this structural boundary
+        start = 0
+        while start < len(full_page_text):
+            end = start + chunk_size
+            chunk_text = full_page_text[start:end]
+            
+            # Record the chunk contract
+            chunks.append({
+                "text": chunk_text,
+                "metadata": {
+                    "source": pdf_path,
+                    "page": page_num + 1,
+                    "section": current_section,
+                    "chunk_length": len(chunk_text)
+                }
+            })
+            
+            # Slide the window forward, subtracting the overlap bounds
+            start += (chunk_size - chunk_overlap)
+            
+    return chunks
