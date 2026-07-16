@@ -1,0 +1,7 @@
+{
+    "document_type": "SEC_10Q",
+    "chunking_strategy": "HYBRID",
+    "chunk_size": 1200,
+    "chunk_overlap": 150,
+    "reasoning": "The document exhibits clear headers, structured sections, and contains financial statements with multiple columns. The presence of explicit section titles and financial data necessitates context isolation within structural boundaries, making 'HYBRID' the most suitable chunking profile."
+}
