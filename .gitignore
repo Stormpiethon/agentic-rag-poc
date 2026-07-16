@@ -30,4 +30,3 @@ data/*.db
 # Local blueprint to maintain project architecture and progress
 # Feed back to any AI assistant being used so that context is maintained
 context_blueprint.txt
-Agentic_RAG.excalidraw
