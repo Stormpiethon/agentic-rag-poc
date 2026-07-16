@@ -14,42 +14,41 @@ into the compiled graph engine
 import os
 from dotenv import load_dotenv
 from utils.telemetry import init_telemetry
-from ingestion.parsers import extract_structural_fingerprint, chunk_document_hybrid
-from ingestion.agent import determine_document_strategy
-from ingestion.vector_store import initialize_and_upsert
-from retrieval.retriever import query_vector_store
+from runtime.graph import compiled_graph
+
+# Entry point for the application that calls stateful LangGraph workflow
+def run_agentic_rag(user_question: str):
+    print("\n" + "="*60)
+    print(f" !!! INITIALIZING AGENTIC RAG SYSTEM")
+    print(f"User Question: '{user_question}'")
+    print("="*60)
+
+    # Initialize the default state structure
+    initial_state = {
+        "question": user_question,
+        "current_query": "",
+        "query_history": [],
+        "documents": [],
+        "loop_step": 0,
+        "final_response": ""
+    }
+
+    # Run the compiled state machine
+    final_state = compiled_graph.invoke(initial_state)
+
+    print("\n" + "="*60)
+    print(" !!! FINAL AGENT RESPONSE")
+    print("="*60)
+    print(final_state["final_response"])
+    print("="*60 + "\n")
 
 def main():
     load_dotenv()
     init_telemetry()
     
-    print("\n--- Running Full Pipeline (Ingestion + Trace Creation) ---")
-    pdf_path = "data/Apple_10-Q.pdf"
-    
-    # Extract layout blueprint
-    fingerprint = extract_structural_fingerprint(pdf_path)
-    
-    # Let the Agent set the rules
-    strategy = determine_document_strategy(fingerprint)
-    
-    # Execute the chunker
-    processed_chunks = chunk_document_hybrid(
-        pdf_path=pdf_path,
-        chunk_size=strategy.chunk_size,
-        chunk_overlap=strategy.chunk_overlap
-    )
-    
-    # Clean purge old vectors, upload new ones, and write the local strategy_contract.json
-    initialize_and_upsert(processed_chunks, strategy)
-    
-    # Immediately test a retrieval query
-    print("\n--- Running Retrieval Test ---")
-    question = "What were Apple's Products and Services net sales for the three months ended December 27, 2025?"
-    results = query_vector_store(query_text=question, top_k=1)
-    
-    if results:
-        print(f"\nMatch Score: {results[0]['score']:.4f}")
-        print(f"Content:\n{results[0]['text'][:400]}...")
+    # Query 1: Answering with highly specific data present in the Apple 10-Q
+    test_question = "What were Apple's Products and Services net sales for the three months ended December 27, 2025?"
+    run_agentic_rag(test_question)
 
 if __name__ == "__main__":
     main()
