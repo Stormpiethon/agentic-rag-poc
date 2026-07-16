@@ -6,7 +6,7 @@ Pinecone, the LLM-as-a-judge document grader, and the query rewriter prompt.
 import os
 from typing import List, Dict, Any
 from pydantic import BaseModel, Field
-from openai import OpenAI
+from langchain_openai import ChatOpenAI
 from retrieval.retriever import query_vector_store
 
 # =====================================================================
@@ -18,7 +18,6 @@ class GradeDocument(BaseModel):
     explanation: str = Field(
         description="A brief, single-sentence explanation of why the document chunk is or is not relevant."
     )
-
 # =====================================================================
 # ISOLATED TOOL ACTIONS
 
@@ -28,39 +27,42 @@ def retrieve_chunks(query_text: str, top_k: int = 5) -> List[Dict[str, Any]]:
     return query_vector_store(query_text=query_text, top_k=top_k)
 
 # Evaluates if a retrieved text chunk contains information that can help answer the user's question
-def grade_chunk_relevance(query_text: str, document_text: str) -> str:
-    client = OpenAI()
+def grade_chunk_relevance(query_text: str, document_text: str, source_name: str) -> bool:
+    """
+    Acts as the LLM Judge. Returns True or False.
+    """
+    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.0)
+    structured_llm = llm.with_structured_output(GradeDocument)
     
-    system_prompt = (
-        "You are an elite corporate auditor grading the quality of retrieved financial context.\n"
-        "Your task is to determine if the provided text chunk contains any information relevant "
-        "to answering the user's query.\n\n"
-        "Guidelines:\n"
-        "1. Be highly conservative but fair. If the chunk contains even a single sentence, metric, "
-        "or detail that could help answer the query, grade it as True.\n"
-        "2. If the chunk is completely off-topic, blank, or contains only generic formatting text "
-        "that does not apply to the query, grade it as False."
-    )
+    # We dynamically pass the source document metadata directly to the Judge's instructions
+    system_prompt = f"""
+        You are an elite corporate auditor grading the quality of retrieved financial context.
+        Your task is to determine if the provided text chunk contains any information relevant to answering the user's query.
+
+        Guidelines:
+        1. Be highly conservative but fair. If the chunk contains even a single sentence, metric, or detail that could help answer the query, grade it as True.
+        2. If the chunk is completely off-topic, blank, or contains only generic formatting text that does not apply to the query, grade it as False.
+        3. DYNAMIC ENTITY ALIGNMENT (CRITICAL): 
+        - Identify the corporate entity (company) the user is asking about in the query.
+        - The document chunk you are grading comes from the source file: '{source_name}'.
+        - Extract the target company of this source file.
+        - If the user's query is asking about a specific company but the source document represents a completely different company, you MUST grade this as False. 
+        - Conceptual alignment (e.g., both texts discuss 'capital expenditures') must NEVER override a corporate entity mismatch.
+        """
     
     user_prompt = f"User Query: {query_text}\n\nRetrieved Text Chunk:\n{document_text}"
     
-    # Force OpenAI to return a strict, Pydantic-conforming JSON object
-    completion = client.beta.chat.completions.parse(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt}
-        ],
-        response_format=GradeDocument,
-    )
+    result = structured_llm.invoke([
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt}
+    ])
     
-    result = completion.choices[0].message.parsed
     print(f"  ↳ Judge Score: [{str(result.binary_score).upper()}] - {result.explanation}")
     return result.binary_score
 
 # Rewrites the user's search query and avoids duplicates to target distinct semantic keywords
 def rewrite_search_query(original_query: str, query_history: List[str]) -> str:
-    client = OpenAI()
+    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.7)
     
     history_str = "\n".join([f"- {q}" for q in query_history])
     
@@ -80,15 +82,11 @@ def rewrite_search_query(original_query: str, query_history: List[str]) -> str:
         f"Generate a brand new, unique query that tackles the question from a different financial perspective:"
     )
     
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt}
-        ],
-        temperature=0.7 
-    )
+    response = llm.invoke([
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt}
+    ])
     
-    rewritten_query = response.choices[0].message.content.strip()
+    rewritten_query = response.content.strip()
     print(f"[Tool: Query Rewriter] Reformulated search query to: '{rewritten_query}'")
     return rewritten_query

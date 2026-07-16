@@ -40,9 +40,8 @@ def initialize_and_upsert(chunks: List[Dict[str, Any]], strategy: Any):
 
     index = pc.Index(INDEX_NAME)
 
-    # -----------------------------------------------------------------
+    # =============================================================================
     # IDEMPOTENCY STEP: Delete old document vectors before upserting
-    # -----------------------------------------------------------------
     if chunks:
         # Get the unique source path we are processing (e.g., 'data/Apple_10-Q.pdf')
         source_file = chunks[0]["metadata"]["source"]
@@ -51,7 +50,7 @@ def initialize_and_upsert(chunks: List[Dict[str, Any]], strategy: Any):
         # Pinecone allows us to delete vectors by matching a metadata filter
         index.delete(filter={"source": {"$eq": source_file}})
         print("Purge complete. Index is clean.")
-    # -----------------------------------------------------------------
+    # =============================================================================
 
     # Generate embeddings for all chunks and prepare the upsert payload
     print(f"Generating embeddings for {len(chunks)} chunks...")

@@ -1,0 +1,5 @@
+Timestamp,Document Name,Total Chunks Generated,Parser Tokens Used,Ingestion Cost ($),Processing Latency (ms)
+2026-07-16 11:00:38,Apple_10-K.pdf,254,1722,0.000305,16021
+2026-07-16 11:00:45,Apple_10-Q.pdf,71,1902,0.000326,6947
+2026-07-16 11:00:57,Microsoft_10-K.pdf,417,1926,0.000331,11859
+2026-07-16 11:01:14,Microsoft_10-Q.pdf,273,2393,0.000393,16634
