@@ -24,8 +24,8 @@ def log_run_to_csv(question: str, final_response: str, query_history: list, node
         "Timestamp", 
         "User Question",
         "Success Status",
-        "Search Queries Attempted",
-        "Final Agent Response",
+        "Search Queries Attempted",  
+        "Final Agent Response",      
         "Total Run Latency (ms)",
         "Stages Executed Summary",
         "Detailed Node Telemetry (JSON)"
@@ -33,6 +33,12 @@ def log_run_to_csv(question: str, final_response: str, query_history: list, node
     
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     queries_joined = " || ".join([f"'{q}'" for q in query_history]) if query_history else f"'{question}'"
+    
+    # -------------------------------------------------------------------------
+    # FIX 1: Clean the final response of newlines so it stays on ONE single CSV row
+    # Replace real newlines with space or a visual placeholder like " | "
+    clean_response = final_response.replace("\r\n", " ").replace("\n", " ").strip()
+    # -------------------------------------------------------------------------
     
     # Compile stage summary
     summary_parts = []
@@ -43,6 +49,7 @@ def log_run_to_csv(question: str, final_response: str, query_history: list, node
         summary_parts.append(f"{node['node']}{token_str} ({node['latency_ms']}ms)")
     stages_summary_str = " -> ".join(summary_parts)
 
+    # FIX 2: newline="" prevents Python's file writer from adding extra blank carriage returns on Windows
     with open(csv_path, mode="a", newline="", encoding="utf-8") as csvfile:
         writer = csv.writer(csvfile)
         if not file_exists:
@@ -52,14 +59,14 @@ def log_run_to_csv(question: str, final_response: str, query_history: list, node
             timestamp,
             question,
             "SUCCESS" if is_successful else "FAILED/UNSUPPORTED",
-            queries_joined,
-            final_response,
+            queries_joined,       
+            clean_response,
             total_latency,
             stages_summary_str,
             json.dumps(node_telemetry)
         ])
         
-    print(f"📊 Rich demo telemetry written to: '{csv_path}'")
+    print(f"📊 Clean telemetry logged to: '{csv_path}'")
 
 
 # Telemetry Logging for Document Ingestion
